@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("supervisor")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  logs      ProductionLog[]
+}
+
+model ProductionStage {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  logs        ProductionLog[]
+  alerts      BottleneckAlert[]
+}
+
+model ProductionLog {
+  id         String   @id @default(cuid())
+  stageId    String
+  userId     String
+  quantity   Int
+  unit       String   @default("meters")
+  shift      String
+  logTime    DateTime @default(now())
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  stage      ProductionStage @relation(fields: [stageId], references: [id])
+  user       User           @relation(fields: [userId], references: [id])
+}
+
+model BottleneckAlert {
+  id          String   @id @default(cuid())
+  stageId     String
+  message     String
+  severity    String   @default("medium")
+  resolved    Boolean  @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  stage       ProductionStage @relation(fields: [stageId], references: [id])
+}
