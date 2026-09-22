@@ -5,6 +5,7 @@ class BottleneckAlert {
   final String severity;
   final bool resolved;
   final DateTime createdAt;
+  final DateTime? resolvedAt;
 
   BottleneckAlert({
     required this.id,
@@ -13,6 +14,7 @@ class BottleneckAlert {
     required this.severity,
     required this.resolved,
     required this.createdAt,
+    this.resolvedAt,
   });
 
   factory BottleneckAlert.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class BottleneckAlert {
       severity: json['severity'],
       resolved: json['resolved'],
       createdAt: DateTime.parse(json['createdAt']),
+      resolvedAt: json['resolvedAt'] != null ? DateTime.parse(json['resolvedAt']) : null,
     );
   }
 }
