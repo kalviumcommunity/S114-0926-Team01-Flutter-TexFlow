@@ -1,9 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
-import '../services/auth_service.dart';
-import '../services/api_service.dart';
+import '../core/api/api.dart';
 
-final authServiceProvider = Provider<AuthService>((ref) => AuthService());
+final authApiProvider = Provider<AuthApiService>((ref) => AuthApiService());
 
 enum AuthStatus {
   initial,
@@ -53,42 +52,83 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> login(String email, String password) async {
     state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
-    final authService = ref.read(authServiceProvider);
+    final authApi = ref.read(authApiProvider);
     try {
-      final user = await authService.login(email, password);
-      state = state.copyWith(user: user, status: AuthStatus.authenticated);
+      final authResponse = await authApi.login(LoginRequest(email: email, password: password));
+      await authApi.setToken(authResponse.token);
+      state = state.copyWith(user: authResponse.user, status: AuthStatus.authenticated);
+    } on UnauthorizedException catch (e) {
+      state = state.copyWith(status: AuthStatus.error, errorMessage: 'Invalid email or password');
+      rethrow;
+    } on ValidationException catch (e) {
+      state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
+      rethrow;
+    } on ApiException catch (e) {
+      state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
+      rethrow;
     } catch (e) {
-      state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(status: AuthStatus.error, errorMessage: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> register({
+    required String name,
+    required String email,
+    required String password,
+    String? role,
+  }) async {
+    state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
+    final authApi = ref.read(authApiProvider);
+    try {
+      final authResponse = await authApi.register(RegisterRequest(
+        name: name,
+        email: email,
+        password: password,
+        role: role,
+      ));
+      await authApi.setToken(authResponse.token);
+      state = state.copyWith(user: authResponse.user, status: AuthStatus.authenticated);
+    } on BadRequestException catch (e) {
+      state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
+      rethrow;
+    } on ValidationException catch (e) {
+      state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
+      rethrow;
+    } on ApiException catch (e) {
+      state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
+      rethrow;
+    } catch (e) {
+      state = state.copyWith(status: AuthStatus.error, errorMessage: e.toString());
       rethrow;
     }
   }
 
   Future<void> logout() async {
-    final authService = ref.read(authServiceProvider);
-    await authService.logout();
+    final authApi = ref.read(authApiProvider);
+    await authApi.clearToken();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
   Future<void> checkAuthStatus() async {
     state = state.copyWith(status: AuthStatus.loading);
-    final authService = ref.read(authServiceProvider);
-    final apiService = ref.read(apiServiceProvider);
+    final authApi = ref.read(authApiProvider);
     try {
-      final token = await apiService.getToken();
+      final token = await authApi.getToken();
       if (token != null) {
-        final user = await authService.getCurrentUser();
-        state = state.copyWith(user: user, status: AuthStatus.authenticated);
+        final user = await authApi.getCurrentUser();
+        if (user != null) {
+          state = state.copyWith(user: user, status: AuthStatus.authenticated);
+        } else {
+          await authApi.clearToken();
+          state = const AuthState(status: AuthStatus.unauthenticated);
+        }
       } else {
         state = const AuthState(status: AuthStatus.unauthenticated);
       }
     } catch (e) {
-      await authService.logout();
+      await authApi.clearToken();
       state = const AuthState(status: AuthStatus.unauthenticated);
     }
   }
 }
-
-final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
