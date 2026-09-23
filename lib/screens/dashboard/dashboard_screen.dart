@@ -20,6 +20,9 @@ class DashboardScreen extends ConsumerWidget {
     final stagesAsync = ref.watch(productionStagesProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
+    final isManagerOrAdmin = authState.isManager || authState.isAdmin;
+    final isSupervisor = authState.isSupervisor;
+
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
@@ -27,7 +30,7 @@ class DashboardScreen extends ConsumerWidget {
         elevation: 0,
         title: const Text('TexFlow'),
         actions: [
-          if (authState == null)
+          if (authState.user == null)
             TextButton.icon(
               onPressed: () => context.go('/login'),
               icon: const Icon(Icons.login_rounded),
@@ -39,7 +42,7 @@ class DashboardScreen extends ConsumerWidget {
                 radius: 16,
                 backgroundColor: colorScheme.primaryContainer,
                 child: Text(
-                  authState.name.isNotEmpty ? authState.name[0].toUpperCase() : 'U',
+                  authState.user!.name.isNotEmpty ? authState.user!.name[0].toUpperCase() : 'U',
                   style: TextStyle(
                     color: colorScheme.onPrimaryContainer,
                     fontWeight: FontWeight.bold,
@@ -73,6 +76,7 @@ class DashboardScreen extends ConsumerWidget {
           onRefresh: () async {
             ref.invalidate(productionLogsProvider);
             ref.invalidate(productionStagesProvider);
+            ref.invalidate(alertsProvider);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -131,8 +135,8 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        authState != null
-                            ? 'Welcome, ${authState.name} (${authState.role})'
+                        authState.user != null
+                            ? 'Welcome, ${authState.user!.name} (${authState.user!.role})'
                             : 'Track every stage of your production line',
                         style: const TextStyle(
                           color: Colors.white70,
@@ -145,19 +149,48 @@ class DashboardScreen extends ConsumerWidget {
                         spacing: 12,
                         runSpacing: 12,
                         children: [
-                          FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: colorScheme.primary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 14,
+                          if (isSupervisor || isManagerOrAdmin)
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: colorScheme.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 14,
+                                ),
                               ),
+                              onPressed: () => context.go('/production/log'),
+                              icon: const Icon(Icons.add_circle_outline_rounded),
+                              label: const Text('Log Production'),
                             ),
-                            onPressed: () => context.go('/production/log'),
-                            icon: const Icon(Icons.add_circle_outline_rounded),
-                            label: const Text('Log Production'),
-                          ),
+                          if (isManagerOrAdmin)
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: colorScheme.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 14,
+                                ),
+                              ),
+                              onPressed: () => context.go('/dashboard/alerts'),
+                              icon: const Icon(Icons.warning_amber_rounded),
+                              label: const Text('View Alerts'),
+                            ),
+                          if (authState.isAdmin)
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: colorScheme.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 14,
+                                ),
+                              ),
+                              onPressed: () => context.go('/admin'),
+                              icon: const Icon(Icons.admin_panel_settings_rounded),
+                              label: const Text('Admin Panel'),
+                            ),
                           OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.white,
@@ -167,7 +200,11 @@ class DashboardScreen extends ConsumerWidget {
                                 vertical: 14,
                               ),
                             ),
-                            onPressed: () {},
+                            onPressed: () {
+                              ref.invalidate(productionLogsProvider);
+                              ref.invalidate(productionStagesProvider);
+                              ref.invalidate(alertsProvider);
+                            },
                             icon: const Icon(Icons.refresh_rounded),
                             label: const Text('Refresh Data'),
                           ),
