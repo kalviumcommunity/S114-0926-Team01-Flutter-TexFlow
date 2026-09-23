@@ -6,6 +6,7 @@ import '../../models/production_stage.dart';
 import '../../providers/production_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_card.dart';
+import '../../core/api/production_api.dart';
 
 class LogEntryScreen extends ConsumerStatefulWidget {
   const LogEntryScreen({super.key});
@@ -42,20 +43,16 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final productionService = ref.read(productionServiceProvider);
-      final log = ProductionLog(
-        id: '',
+      final productionApi = ref.read(productionApiProvider);
+      final request = CreateLogRequest(
         stageId: _selectedStage!.id,
-        userId: '',
         quantity: int.parse(_quantityController.text),
         unit: _selectedUnit,
         shift: _selectedShift,
-        logTime: DateTime.now(),
         notes: _notesController.text.isEmpty ? null : _notesController.text,
-        stageName: _selectedStage!.name,
       );
 
-      await productionService.createLog(log);
+      await productionApi.createLog(request);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

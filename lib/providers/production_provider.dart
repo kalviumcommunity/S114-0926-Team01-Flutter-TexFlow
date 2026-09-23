@@ -2,29 +2,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/production_log.dart';
 import '../models/production_stage.dart';
 import '../models/bottleneck_alert.dart';
-import '../services/production_service.dart';
-import '../services/alert_service.dart';
+import '../core/api/api.dart';
 
-final productionServiceProvider =
-    Provider<ProductionService>((ref) => ProductionService());
+final productionApiProvider = Provider<ProductionApiService>((ref) => ProductionApiService());
+final alertApiProvider = Provider<DashboardApiService>((ref) => DashboardApiService());
 
-final alertServiceProvider =
-    Provider<AlertService>((ref) => AlertService());
-
-final productionLogsProvider =
-    FutureProvider<List<ProductionLog>>((ref) async {
-  final service = ref.read(productionServiceProvider);
-  return service.getLogs();
+final productionStagesProvider = FutureProvider<List<ProductionStage>>((ref) async {
+  final api = ref.read(productionApiProvider);
+  return api.getStages();
 });
 
-final productionStagesProvider =
-    FutureProvider<List<ProductionStage>>((ref) async {
-  final service = ref.read(productionServiceProvider);
-  return service.getStages();
+final productionLogsProvider = FutureProvider<List<ProductionLog>>((ref) async {
+  final api = ref.read(productionApiProvider);
+  return api.getLogs();
 });
 
-final alertsProvider =
-    FutureProvider<List<BottleneckAlert>>((ref) async {
-  final service = ref.read(alertServiceProvider);
-  return service.getAlerts(resolved: false);
+final alertsProvider = FutureProvider<List<BottleneckAlert>>((ref) async {
+  final api = ref.read(alertApiProvider);
+  return api.getAlerts(resolved: false);
+});
+
+final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
+  final api = ref.read(alertApiProvider);
+  return api.getDashboardStats();
 });

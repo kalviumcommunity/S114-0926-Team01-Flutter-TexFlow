@@ -6,6 +6,7 @@ import '../../models/bottleneck_alert.dart';
 import '../../providers/production_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/app_card.dart';
+import '../../core/api/dashboard_api.dart';
 
 class AlertsScreen extends ConsumerWidget {
   const AlertsScreen({super.key});
@@ -180,7 +181,8 @@ class AlertsScreen extends ConsumerWidget {
               child: ElevatedButton.icon(
                 onPressed: () async {
                   try {
-                    await ref.read(alertServiceProvider).resolveAlert(alert.id);
+                    final alertApi = ref.read(alertApiProvider);
+                    await alertApi.resolveAlert(alert.id);
                     ref.invalidate(alertsProvider);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
