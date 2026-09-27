@@ -59,12 +59,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/production/log',
         builder: (context, state) => const LogEntryScreen(),
       ),
-GoRoute(
+      GoRoute(
         path: '/dashboard/alerts',
         builder: (context, state) => const AlertsScreen(),
       ),
     ],
-  });
+});
 
 final goRouterRefreshNotifierProvider = Provider<GoRouterRefreshNotifier>((ref) {
   return GoRouterRefreshNotifier(ref);
@@ -84,23 +84,23 @@ String _getDefaultRouteForRole(String role) {
 
 bool _isRouteAllowedForRole(String location, String role) {
   final normalizedRole = role.toLowerCase();
-  
+
   if (location.startsWith('/admin')) {
     return normalizedRole == 'admin';
   }
-  
+
   if (location.startsWith('/dashboard/alerts')) {
     return normalizedRole == 'manager' || normalizedRole == 'admin';
   }
-  
+
   if (location.startsWith('/production/log')) {
     return normalizedRole == 'supervisor' || normalizedRole == 'manager' || normalizedRole == 'admin';
   }
-  
+
   if (location == '/') {
     return normalizedRole == 'manager' || normalizedRole == 'admin';
   }
-  
+
   return true;
 }
 
@@ -109,3 +109,5 @@ class GoRouterRefreshNotifier extends ChangeNotifier {
     ref.listen<AuthState>(authProvider, (_, _) => notifyListeners());
   }
 }
+
+// End of file marker

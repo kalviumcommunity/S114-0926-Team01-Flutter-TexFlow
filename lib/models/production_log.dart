@@ -1,18 +1,45 @@
+import 'package:hive/hive.dart';
 import 'production_stage.dart';
 import 'user.dart';
 
+part 'production_log.g.dart';
+
+@HiveType(typeId: 1)
 class ProductionLog {
+  @HiveField(0)
   final String id;
+
+  @HiveField(1)
   final String stageId;
+
+  @HiveField(2)
   final String userId;
+
+  @HiveField(3)
   final int quantity;
+
+  @HiveField(4)
   final String unit;
+
+  @HiveField(5)
   final String shift;
+
+  @HiveField(6)
   final DateTime logTime;
+
+  @HiveField(7)
   final String? notes;
+
+  @HiveField(8)
   final DateTime createdAt;
+
+  @HiveField(9)
   final DateTime updatedAt;
+
+  @HiveField(10)
   final ProductionStage? stage;
+
+  @HiveField(11)
   final User? user;
 
   ProductionLog({
@@ -61,11 +88,21 @@ class ProductionLog {
   String get userName => user?.name ?? 'Unknown User';
 }
 
+@HiveType(typeId: 2)
 class CreateLogRequest {
+  @HiveField(0)
   final String stageId;
+
+  @HiveField(1)
   final int quantity;
+
+  @HiveField(2)
   final String unit;
+
+  @HiveField(3)
   final String shift;
+
+  @HiveField(4)
   final String? notes;
 
   CreateLogRequest({
@@ -87,9 +124,15 @@ class CreateLogRequest {
   }
 }
 
+@HiveType(typeId: 3)
 class GetLogsQuery {
+  @HiveField(0)
   final String? shift;
+
+  @HiveField(1)
   final String? stageId;
+
+  @HiveField(2)
   final DateTime? date;
 
   GetLogsQuery({this.shift, this.stageId, this.date});
@@ -105,9 +148,15 @@ class GetLogsQuery {
   }
 }
 
+@HiveType(typeId: 4)
 class StageTotal {
+  @HiveField(0)
   final String stageId;
+
+  @HiveField(1)
   final int totalQuantity;
+
+  @HiveField(2)
   final int count;
 
   StageTotal({

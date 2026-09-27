@@ -1,9 +1,25 @@
+import 'package:hive/hive.dart';
+
+part 'production_stage.g.dart';
+
+@HiveType(typeId: 0)
 class ProductionStage {
+  @HiveField(0)
   final String id;
+
+  @HiveField(1)
   final String name;
+
+  @HiveField(2)
   final String? description;
+
+  @HiveField(3)
   final int order;
+
+  @HiveField(4)
   final DateTime createdAt;
+
+  @HiveField(5)
   final DateTime updatedAt;
 
   ProductionStage({

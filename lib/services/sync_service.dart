@@ -5,7 +5,7 @@ import '../services/connectivity_service.dart';
 import '../core/api/production_api.dart';
 import '../core/api/api_exceptions.dart';
 import '../models/offline_log.dart';
-import '../providers/production_provider.dart';
+import '../models/production_log.dart';
 
 class SyncService {
   final CacheService _cache;
