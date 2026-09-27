@@ -169,6 +169,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     },
                     child: const Text('Demo Credentials'),
                   ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => context.go('/register'),
+                    child: const Text("Don't have an account? Register"),
+                  ),
                 ],
               ),
             ),
