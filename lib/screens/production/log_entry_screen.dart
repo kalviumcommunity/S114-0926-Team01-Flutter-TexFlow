@@ -6,7 +6,9 @@ import '../../models/production_stage.dart';
 import '../../providers/production_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_card.dart';
-import '../../core/api/production_api.dart';
+import '../../services/cache_service.dart';
+import '../../services/connectivity_service.dart';
+import '../../models/offline_log.dart';
 
 class LogEntryScreen extends ConsumerStatefulWidget {
   const LogEntryScreen({super.key});
@@ -43,29 +45,63 @@ class _LogEntryScreenState extends ConsumerState<LogEntryScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final productionApi = ref.read(productionApiProvider);
-      final request = CreateLogRequest(
-        stageId: _selectedStage!.id,
-        quantity: int.parse(_quantityController.text),
-        unit: _selectedUnit,
-        shift: _selectedShift,
-        notes: _notesController.text.isEmpty ? null : _notesController.text,
-      );
-
-      await productionApi.createLog(request);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Production logged successfully'), backgroundColor: Colors.green),
+      final connectivity = ref.read(connectivityServiceProvider);
+      final isOnline = await connectivity.checkConnection();
+      
+      if (isOnline) {
+        final productionApi = ref.read(productionApiProvider);
+        final request = CreateLogRequest(
+          stageId: _selectedStage!.id,
+          quantity: int.parse(_quantityController.text),
+          unit: _selectedUnit,
+          shift: _selectedShift,
+          notes: _notesController.text.isEmpty ? null : _notesController.text,
         );
-        _formKey.currentState!.reset();
-        _quantityController.clear();
-        _notesController.clear();
-        setState(() {
-          _selectedStage = null;
-          _selectedShift = 'morning';
-          _selectedUnit = 'meters';
-        });
+
+        await productionApi.createLog(request);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Production logged successfully'), backgroundColor: Colors.green),
+          );
+          _formKey.currentState!.reset();
+          _quantityController.clear();
+          _notesController.clear();
+          setState(() {
+            _selectedStage = null;
+            _selectedShift = 'morning';
+            _selectedUnit = 'meters';
+          });
+        }
+      } else {
+        // Offline mode - queue for later sync
+        final cache = ref.read(cacheServiceProvider);
+        final offlineLog = OfflineLog.fromCreateLogRequest(
+          _selectedStage!.id,
+          int.parse(_quantityController.text),
+          _selectedUnit,
+          _selectedShift,
+          _notesController.text.isEmpty ? null : _notesController.text,
+        );
+        
+        await cache.addToOfflineQueue(offlineLog);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Offline - Production queued for sync when online'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          _formKey.currentState!.reset();
+          _quantityController.clear();
+          _notesController.clear();
+          setState(() {
+            _selectedStage = null;
+            _selectedShift = 'morning';
+            _selectedUnit = 'meters';
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
