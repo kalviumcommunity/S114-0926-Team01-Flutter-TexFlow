@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../../models/production_log.dart';
 import '../../models/production_stage.dart';
 import '../../models/dashboard.dart';
-import '../../models/production_log.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/production_provider.dart';
 import '../../widgets/charts/production_chart.dart';
@@ -24,6 +23,11 @@ class DashboardScreen extends ConsumerWidget {
     final stageTotalsAsync = ref.watch(stageTotalsProvider);
     final shiftFilter = ref.watch(shiftFilterProvider);
     final dateFilter = ref.watch(dateFilterProvider);
+    final isOnline = ref.watch(connectivityProvider).maybeWhen(
+      data: (value) => value,
+      orElse: () => true,
+    );
+    final offlineQueueCount = ref.watch(offlineQueueCountProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     final isManagerOrAdmin = authState.isManager || authState.isAdmin;
@@ -36,6 +40,14 @@ class DashboardScreen extends ConsumerWidget {
         elevation: 0,
         title: const Text('TexFlow'),
         actions: [
+          if (!isOnline)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Tooltip(
+                message: 'Offline - $offlineQueueCount pending sync',
+                child: const Icon(Icons.cloud_off, color: Colors.orange),
+              ),
+            ),
           if (authState.user == null)
             TextButton.icon(
               onPressed: () => context.go('/login'),
@@ -518,7 +530,8 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
           ],
-        ],
+          ],
+        ),
       );
   }
 

@@ -7,7 +7,7 @@ import '../screens/auth/register_screen.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/production/log_entry_screen.dart';
 import '../screens/dashboard/alerts_screen.dart';
-import '../screens/admin/admin_screen.dart';
+// import '../screens/admin/admin_screen.dart'; // Temporarily disabled for build_runner
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -59,17 +59,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/production/log',
         builder: (context, state) => const LogEntryScreen(),
       ),
-      GoRoute(
+GoRoute(
         path: '/dashboard/alerts',
         builder: (context, state) => const AlertsScreen(),
       ),
-      GoRoute(
-        path: '/admin',
-        builder: (context, state) => const AdminScreen(),
-      ),
     ],
-  );
-});
+  });
 
 final goRouterRefreshNotifierProvider = Provider<GoRouterRefreshNotifier>((ref) {
   return GoRouterRefreshNotifier(ref);
@@ -78,7 +73,7 @@ final goRouterRefreshNotifierProvider = Provider<GoRouterRefreshNotifier>((ref) 
 String _getDefaultRouteForRole(String role) {
   switch (role.toLowerCase()) {
     case 'admin':
-      return '/admin';
+      return '/'; // Admin screen temporarily disabled
     case 'manager':
       return '/';
     case 'supervisor':
