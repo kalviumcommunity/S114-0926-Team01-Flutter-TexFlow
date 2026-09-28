@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/production_log.dart';
 import '../../models/production_stage.dart';
 import '../../models/dashboard.dart';
+import '../../models/production_log.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/production_provider.dart';
 import '../../widgets/charts/production_chart.dart';
@@ -20,6 +21,9 @@ class DashboardScreen extends ConsumerWidget {
     final logsAsync = ref.watch(productionLogsProvider);
     final stagesAsync = ref.watch(productionStagesProvider);
     final dashboardStatsAsync = ref.watch(dashboardStatsProvider);
+    final stageTotalsAsync = ref.watch(stageTotalsProvider);
+    final shiftFilter = ref.watch(shiftFilterProvider);
+    final dateFilter = ref.watch(dateFilterProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     final isManagerOrAdmin = authState.isManager || authState.isAdmin;
@@ -208,6 +212,7 @@ class DashboardScreen extends ConsumerWidget {
                               ref.invalidate(productionStagesProvider);
                               ref.invalidate(alertsProvider);
                               ref.invalidate(dashboardStatsProvider);
+                              ref.invalidate(stageTotalsProvider);
                             },
                             icon: const Icon(Icons.refresh_rounded),
                             label: const Text('Refresh Data'),
@@ -217,6 +222,8 @@ class DashboardScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+                _buildFilterControls(context, ref, colorScheme),
                 const SizedBox(height: 24),
                 dashboardStatsAsync.when(
                   data: (stats) => _buildStatsGrid(context, stats),
@@ -230,9 +237,9 @@ class DashboardScreen extends ConsumerWidget {
                       ?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 14),
-                stagesAsync.when(
-                  data: (stages) => logsAsync.when(
-                    data: (logs) => _buildStageChartCard(context, stages, logs),
+                stageTotalsAsync.when(
+                  data: (totals) => stagesAsync.when(
+                    data: (stages) => _buildStageTotalsChartCard(context, stages, totals),
                     loading: () => _buildChartPlaceholder(),
                     error: (err, _) => _buildErrorCard(err.toString()),
                   ),
@@ -434,6 +441,118 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       );
+
+  Widget _buildFilterControls(BuildContext context, WidgetRef ref, ColorScheme colorScheme) {
+    final shiftFilter = ref.watch(shiftFilterProvider);
+    final dateFilter = ref.watch(dateFilterProvider);
+
+    return AppCard(
+      title: 'Filters',
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: shiftFilter,
+                  decoration: const InputDecoration(
+                    labelText: 'Shift',
+                    prefixIcon: Icon(Icons.access_time_outlined),
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('All Shifts')),
+                    DropdownMenuItem(value: 'morning', child: Text('Morning (6AM-2PM)')),
+                    DropdownMenuItem(value: 'afternoon', child: Text('Afternoon (2PM-10PM)')),
+                    DropdownMenuItem(value: 'night', child: Text('Night (10PM-6AM)')),
+                  ],
+                  onChanged: (value) => ref.read(shiftFilterProvider.notifier).setShift(value),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: dateFilter ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                    );
+                    if (date != null) {
+                      ref.read(dateFilterProvider.notifier).setDate(date);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Date',
+                      prefixIcon: Icon(Icons.calendar_today_outlined),
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    child: Text(
+                      dateFilter != null
+                          ? DateFormat('MMM d, yyyy').format(dateFilter)
+                          : 'Select Date',
+                      style: TextStyle(
+                        color: dateFilter != null ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (shiftFilter != null || dateFilter != null) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () {
+                  ref.read(shiftFilterProvider.notifier).clear();
+                  ref.read(dateFilterProvider.notifier).clear();
+                },
+                icon: const Icon(Icons.clear_all),
+                label: const Text('Clear Filters'),
+              ),
+            ),
+          ],
+        ],
+      );
+  }
+
+  Widget _buildStageTotalsChartCard(BuildContext context, List<ProductionStage> stages, List<StageTotal> totals) {
+    final stageData = <String, int>{};
+    for (final total in totals) {
+      stageData[total.stageId] = total.totalQuantity;
+    }
+
+    final sortedStages = stages.where((s) => (stageData[s.id] ?? 0) > 0).toList()
+      ..sort((a, b) => (stageData[b.id] ?? 0).compareTo(stageData[a.id] ?? 0));
+
+    final data = sortedStages.map((s) => (stageData[s.id] ?? 0).toDouble()).toList();
+    final labels = sortedStages.map((s) => s.name).toList();
+
+    return AppCard(
+      title: 'Today\'s Production by Stage',
+      child: data.isEmpty
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Icon(Icons.bar_chart, size: 48, color: Colors.grey),
+                    SizedBox(height: 16),
+                    Text('No production data for selected filters'),
+                    Text('Log some production to see the chart', style: TextStyle(color: Colors.grey)),
+                  ],
+                ),
+              ),
+            )
+          : ProductionChart(data: data, labels: labels),
+    );
+  }
 
   Widget _buildLoadingCard() => AppCard(
         title: 'Recent Logs',
