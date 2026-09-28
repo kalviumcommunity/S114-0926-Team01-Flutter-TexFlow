@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../models/production_log.dart';
 import '../../models/production_stage.dart';
+import '../../models/dashboard.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/production_provider.dart';
 import '../../widgets/charts/production_chart.dart';
@@ -18,6 +19,7 @@ class DashboardScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final logsAsync = ref.watch(productionLogsProvider);
     final stagesAsync = ref.watch(productionStagesProvider);
+    final dashboardStatsAsync = ref.watch(dashboardStatsProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     final isManagerOrAdmin = authState.isManager || authState.isAdmin;
@@ -77,6 +79,7 @@ class DashboardScreen extends ConsumerWidget {
             ref.invalidate(productionLogsProvider);
             ref.invalidate(productionStagesProvider);
             ref.invalidate(alertsProvider);
+            ref.invalidate(dashboardStatsProvider);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -204,6 +207,7 @@ class DashboardScreen extends ConsumerWidget {
                               ref.invalidate(productionLogsProvider);
                               ref.invalidate(productionStagesProvider);
                               ref.invalidate(alertsProvider);
+                              ref.invalidate(dashboardStatsProvider);
                             },
                             icon: const Icon(Icons.refresh_rounded),
                             label: const Text('Refresh Data'),
@@ -214,10 +218,10 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                logsAsync.when(
-                  data: (logs) => _buildStatsGrid(context, logs),
-                  loading: () => _buildStatsGrid(context, [], isLoading: true),
-                  error: (err, _) => _buildStatsGrid(context, [], error: err.toString()),
+                dashboardStatsAsync.when(
+                  data: (stats) => _buildStatsGrid(context, stats),
+                  loading: () => _buildStatsGrid(context, null, isLoading: true),
+                  error: (err, _) => _buildStatsGrid(context, null, error: err.toString()),
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -255,26 +259,26 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsGrid(BuildContext context, List<ProductionLog> logs,
+  Widget _buildStatsGrid(BuildContext context, DashboardStats? stats,
       {bool isLoading = false, String? error}) {
     final colorScheme = Theme.of(context).colorScheme;
-    final today = DateTime.now();
-    final todayStart = DateTime(today.year, today.month, today.day);
-    final todayLogs = logs.where((log) => log.logTime.isAfter(todayStart)).toList();
-    final totalQuantity = todayLogs.fold(0, (sum, log) => sum + log.quantity);
-    final totalEntries = todayLogs.length;
 
-    final stats = [
+    final totalQuantity = stats?.totalQuantity ?? 0;
+    final totalEntries = stats?.totalEntries ?? 0;
+    final activeAlerts = stats?.activeAlerts ?? 0;
+    final avgPerEntry = totalEntries > 0 ? totalQuantity ~/ totalEntries : 0;
+
+    final statItems = [
       {'label': 'Total Quantity', 'value': formatQuantity(totalQuantity), 'icon': Icons.inventory_2_rounded},
       {'label': 'Entries Today', 'value': totalEntries.toString(), 'icon': Icons.note_alt_rounded},
-      {'label': 'Active Stages', 'value': logs.map((l) => l.stageId).toSet().length.toString(), 'icon': Icons.factory_rounded},
-      {'label': 'Avg/Entry', 'value': totalEntries > 0 ? formatQuantity(totalQuantity ~/ totalEntries) : '0', 'icon': Icons.trending_up_rounded},
+      {'label': 'Active Alerts', 'value': activeAlerts.toString(), 'icon': Icons.warning_amber_rounded},
+      {'label': 'Avg/Entry', 'value': formatQuantity(avgPerEntry), 'icon': Icons.trending_up_rounded},
     ];
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: stats.length,
+      itemCount: statItems.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 14,
@@ -282,7 +286,7 @@ class DashboardScreen extends ConsumerWidget {
         childAspectRatio: 1.7,
       ),
       itemBuilder: (context, index) {
-        final item = stats[index];
+        final item = statItems[index];
         final icon = item['icon'] as IconData;
         final label = item['label'] as String;
         final value = item['value'] as String;
