@@ -1,11 +1,7 @@
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/production_log.dart';
 import '../models/production_stage.dart';
 import '../models/offline_log.dart';
-import '../models/production_log.g.dart';
-import '../models/production_stage.g.dart';
-import '../models/offline_log.g.dart';
 
 class CacheService {
   static const String _stagesBox = 'cached_stages';
