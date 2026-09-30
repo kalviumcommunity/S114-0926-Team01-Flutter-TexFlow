@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../config/routes.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/common/app_button.dart';
-import '../../widgets/common/app_card.dart';
+import '../../widgets/auth/auth_layout.dart';
+import '../../widgets/auth/auth_widgets.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -16,169 +18,150 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passwordFocus = FocusNode();
   bool _obscurePassword = true;
   bool _isLoading = false;
-  late final ScaffoldMessengerState _scaffoldMessenger;
-
-  @override
-  void initState() {
-    super.initState();
-    _scaffoldMessenger = ScaffoldMessenger.of(context);
-  }
+  String? _error;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
+    FocusScope.of(context).unfocus();
+    setState(() => _error = null);
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    final authNotifier = ref.read(authProvider.notifier);
-    final navigator = context;
-
     try {
-      await authNotifier.login(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
+      await ref
+          .read(authProvider.notifier)
+          .login(_emailController.text.trim(), _passwordController.text);
+      // Land on the home route for the signed-in role.
+      final role = ref.read(authProvider).user?.role;
+      if (mounted) context.go(defaultRouteForRole(role ?? ''));
+    } catch (_) {
       if (mounted) {
-        navigator.go('/');
-      }
-    } catch (e) {
-      if (mounted) {
-        _scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text('Login failed: $e'), backgroundColor: Colors.red),
-        );
+        setState(() {
+          _error =
+              ref.read(authProvider).errorMessage ??
+              'Unable to sign in. Please try again.';
+        });
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  void _fillDemo() {
+    _emailController.text = 'supervisor@texflow.com';
+    _passwordController.text = 'password123';
+    setState(() => _error = null);
+  }
+
   @override
   Widget build(BuildContext context) {
-    ref.watch(authProvider);
-
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.factory,
-                    size: 80,
-                    color: Theme.of(context).colorScheme.primary,
+    return AuthLayout(
+      heading: 'Welcome back',
+      subheading: 'Sign in to continue to your production dashboard.',
+      form: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_error != null) ...[
+              AuthErrorBanner(message: _error!),
+              const SizedBox(height: 18),
+            ],
+            TextFormField(
+              controller: _emailController,
+              textInputAction: TextInputAction.next,
+              autofillHints: const [AutofillHints.email],
+              keyboardType: TextInputType.emailAddress,
+              enabled: !_isLoading,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                hintText: 'you@company.com',
+                prefixIcon: Icon(Icons.alternate_email_rounded),
+              ),
+              validator: (value) {
+                final v = value?.trim() ?? '';
+                if (v.isEmpty) return 'Please enter your email';
+                if (!RegExp(r'^\S+@\S+\.\S+$').hasMatch(v)) {
+                  return 'Enter a valid email address';
+                }
+                return null;
+              },
+              onFieldSubmitted: (_) => _passwordFocus.requestFocus(),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _passwordController,
+              focusNode: _passwordFocus,
+              textInputAction: TextInputAction.done,
+              autofillHints: const [AutofillHints.password],
+              obscureText: _obscurePassword,
+              enabled: !_isLoading,
+              onFieldSubmitted: (_) => _handleLogin(),
+              decoration: InputDecoration(
+                labelText: 'Password',
+                prefixIcon: const Icon(Icons.lock_outline_rounded),
+                suffixIcon: IconButton(
+                  tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'TexFlow',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Production Monitoring System',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 48),
-                  AppCard(
-                    title: 'Sign In',
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          TextFormField(
-                            controller: _emailController,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(Icons.email_outlined),
-                              border: OutlineInputBorder(),
-                            ),
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your email';
-                              }
-                              if (!value.contains('@')) {
-                                return 'Please enter a valid email';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _passwordController,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: const Icon(Icons.lock_outline),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
-                              ),
-                              border: const OutlineInputBorder(),
-                            ),
-                            obscureText: _obscurePassword,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your password';
-                              }
-                              if (value.length < 6) {
-                                return 'Password must be at least 6 characters';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 24),
-                          AppButton(
-                            label: 'Sign In',
-                            onPressed: _handleLogin,
-                            isLoading: _isLoading,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      _scaffoldMessenger.showSnackBar(
-                        const SnackBar(
-                            content: Text('Demo: supervisor@texflow.com / password123')),
-                      );
-                    },
-                    child: const Text('Demo Credentials'),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () => context.go('/register'),
-                    child: const Text("Don't have an account? Register"),
-                  ),
-                ],
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your password';
+                }
+                if (value.length < 6) {
+                  return 'Password must be at least 6 characters';
+                }
+                return null;
+              },
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _isLoading ? null : _fillDemo,
+                child: const Text('Use demo credentials'),
               ),
             ),
-          ),
+            const SizedBox(height: 4),
+            AuthSubmitButton(
+              label: 'Sign in',
+              isLoading: _isLoading,
+              onPressed: _handleLogin,
+            ),
+          ],
         ),
+      ),
+      footer: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            'New to TexFlow?',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          TextButton(
+            onPressed: _isLoading ? null : () => context.go('/register'),
+            child: const Text('Create an account'),
+          ),
+        ],
       ),
     );
   }

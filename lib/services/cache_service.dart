@@ -1,22 +1,35 @@
 import 'package:hive_flutter/hive_flutter.dart';
+
 import '../models/production_log.dart';
 import '../models/production_stage.dart';
 import '../models/offline_log.dart';
 
 class CacheService {
-  static const String _stagesBox = 'cached_stages';
-  static const String _logsBox = 'cached_logs';
-  static const String _offlineQueueBox = 'offline_queue';
-  static const String _lastSyncBox = 'last_sync';
+  static const String _stagesBoxName = 'cached_stages';
+  static const String _logsBoxName = 'cached_logs';
+  static const String _offlineQueueBoxName = 'offline_queue';
+  static const String _lastSyncBoxName = 'last_sync';
 
-  late Box<ProductionStage> _stagesBoxInstance;
-  late Box<ProductionLog> _logsBoxInstance;
-  late Box<OfflineLog> _offlineQueueInstance;
-  late Box<DateTime> _lastSyncInstance;
+  Box<ProductionStage>? _stagesBox;
+  Box<ProductionLog>? _logsBox;
+  Box<OfflineLog>? _offlineQueueBox;
+  Box<DateTime>? _lastSyncBox;
 
-  Future<void> init() async {
+  Future<void>? _initFuture;
+
+  bool get isInitialized =>
+      _stagesBox != null &&
+      _logsBox != null &&
+      _offlineQueueBox != null &&
+      _lastSyncBox != null;
+
+  Future<void> init() {
+    return _initFuture ??= _init();
+  }
+
+  Future<void> _init() async {
     await Hive.initFlutter();
-    
+
     if (!Hive.isAdapterRegistered(ProductionStageAdapter().typeId)) {
       Hive.registerAdapter(ProductionStageAdapter());
     }
@@ -27,35 +40,46 @@ class CacheService {
       Hive.registerAdapter(OfflineLogAdapter());
     }
 
-    _stagesBoxInstance = await Hive.openBox<ProductionStage>(_stagesBox);
-    _logsBoxInstance = await Hive.openBox<ProductionLog>(_logsBox);
-    _offlineQueueInstance = await Hive.openBox<OfflineLog>(_offlineQueueBox);
-    _lastSyncInstance = await Hive.openBox<DateTime>(_lastSyncBox);
+    _stagesBox = await Hive.openBox<ProductionStage>(_stagesBoxName);
+    _logsBox = await Hive.openBox<ProductionLog>(_logsBoxName);
+    _offlineQueueBox = await Hive.openBox<OfflineLog>(_offlineQueueBoxName);
+    _lastSyncBox = await Hive.openBox<DateTime>(_lastSyncBoxName);
   }
+
+  Future<void> ensureInitialized() => init();
 
   // Stages caching
   Future<void> cacheStages(List<ProductionStage> stages) async {
-    await _stagesBoxInstance.clear();
-    for (final stage in stages) {
-      await _stagesBoxInstance.put(stage.id, stage);
-    }
+    final box = await _ready(() => _stagesBox);
+    if (box == null) return;
+    await box.clear();
+    await box.putAll({for (final stage in stages) stage.id: stage});
   }
 
-  List<ProductionStage> getCachedStages() {
-    return _stagesBoxInstance.values.toList();
+  Future<List<ProductionStage>> getCachedStages() async {
+    final box = await _ready(() => _stagesBox);
+    if (box == null) return [];
+    return box.values.toList();
   }
 
   // Logs caching
   Future<void> cacheLogs(List<ProductionLog> logs) async {
-    await _logsBoxInstance.clear();
-    for (final log in logs) {
-      await _logsBoxInstance.put(log.id, log);
-    }
+    final box = await _ready(() => _logsBox);
+    if (box == null) return;
+    await box.clear();
+    await box.putAll({for (final log in logs) log.id: log});
   }
 
-  List<ProductionLog> getCachedLogs({String? shift, String? stageId, DateTime? date}) {
-    var logs = _logsBoxInstance.values.toList();
-    
+  Future<List<ProductionLog>> getCachedLogs({
+    String? shift,
+    String? stageId,
+    DateTime? date,
+  }) async {
+    final box = await _ready(() => _logsBox);
+    if (box == null) return [];
+
+    var logs = box.values.toList();
+
     if (shift != null) {
       logs = logs.where((l) => l.shift == shift).toList();
     }
@@ -65,50 +89,92 @@ class CacheService {
     if (date != null) {
       final start = DateTime(date.year, date.month, date.day);
       final end = start.add(const Duration(days: 1));
-      logs = logs.where((l) => l.logTime.isAfter(start) && l.logTime.isBefore(end)).toList();
+      logs = logs
+          .where((l) => !l.logTime.isBefore(start) && l.logTime.isBefore(end))
+          .toList();
     }
-    
+
     logs.sort((a, b) => b.logTime.compareTo(a.logTime));
     return logs;
   }
 
   // Offline queue management
-  Future<void> addToOfflineQueue(OfflineLog log) async {
-    await _offlineQueueInstance.put(log.id, log);
+
+  /// Returns `true` only when the entry was durably persisted.
+  ///
+  /// Previously this returned `void` and silently no-op'd when Hive failed to
+  /// initialise, so the UI reported a successful offline save while the log was
+  /// lost. Callers must surface a `false` result to the user.
+  Future<bool> addToOfflineQueue(OfflineLog log) async {
+    final box = await _ready(() => _offlineQueueBox);
+    if (box == null) return false;
+    try {
+      await box.put(log.id, log);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
-  List<OfflineLog> getOfflineQueue() {
-    final queue = _offlineQueueInstance.values.toList();
+  Future<List<OfflineLog>> getOfflineQueue() async {
+    final box = await _ready(() => _offlineQueueBox);
+    if (box == null) return [];
+    final queue = box.values.toList();
     queue.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     return queue;
   }
 
   Future<void> removeFromOfflineQueue(String id) async {
-    await _offlineQueueInstance.delete(id);
+    final box = await _ready(() => _offlineQueueBox);
+    if (box == null) return;
+    await box.delete(id);
   }
 
   Future<void> updateOfflineLog(OfflineLog log) async {
-    await _offlineQueueInstance.put(log.id, log);
+    final box = await _ready(() => _offlineQueueBox);
+    if (box == null) return;
+    await box.put(log.id, log);
   }
 
   Future<void> clearOfflineQueue() async {
-    await _offlineQueueInstance.clear();
+    final box = await _ready(() => _offlineQueueBox);
+    if (box == null) return;
+    await box.clear();
   }
 
   // Last sync tracking
   Future<void> setLastSync(DateTime dateTime) async {
-    await _lastSyncInstance.put('lastSync', dateTime);
+    final box = await _ready(() => _lastSyncBox);
+    if (box == null) return;
+    await box.put('lastSync', dateTime);
   }
 
-  DateTime? getLastSync() {
-    return _lastSyncInstance.get('lastSync');
+  Future<DateTime?> getLastSync() async {
+    final box = await _ready(() => _lastSyncBox);
+    if (box == null) return null;
+    return box.get('lastSync');
   }
 
-  bool hasCachedData() {
-    return _stagesBoxInstance.isNotEmpty || _logsBoxInstance.isNotEmpty;
+  Future<bool> hasCachedData() async {
+    final stages = await _ready(() => _stagesBox);
+    final logs = await _ready(() => _logsBox);
+    if (stages == null || logs == null) return false;
+    return stages.isNotEmpty || logs.isNotEmpty;
   }
 
-  int getOfflineQueueCount() {
-    return _offlineQueueInstance.length;
+  Future<int> getOfflineQueueCount() async {
+    final box = await _ready(() => _offlineQueueBox);
+    return box?.length ?? 0;
+  }
+
+  Future<Box<T>?> _ready<T>(Box<T>? Function() read) async {
+    var box = read();
+    if (box != null) return box;
+    try {
+      await init();
+    } catch (_) {
+      return null;
+    }
+    return read();
   }
 }

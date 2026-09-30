@@ -12,6 +12,7 @@ const resolveAlert = async (alertId) => {
   return prisma.bottleneckAlert.update({
     where: { id: alertId },
     data: { resolved: true, resolvedAt: new Date() },
+    include: { stage: true },
   });
 };
 

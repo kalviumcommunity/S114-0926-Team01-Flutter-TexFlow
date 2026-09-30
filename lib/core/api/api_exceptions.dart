@@ -12,19 +12,29 @@ abstract class ApiException implements Exception {
 }
 
 class BadRequestException extends ApiException {
-  const BadRequestException(String message, [Map<String, dynamic>? details]) : super(400, message, details);
+  const BadRequestException(String message, [Map<String, dynamic>? details])
+    : super(400, message, details);
 }
 
 class UnauthorizedException extends ApiException {
-  const UnauthorizedException([String message = 'Unauthorized', Map<String, dynamic>? details]) : super(401, message, details);
+  const UnauthorizedException([
+    String message = 'Unauthorized',
+    Map<String, dynamic>? details,
+  ]) : super(401, message, details);
 }
 
 class ForbiddenException extends ApiException {
-  const ForbiddenException([String message = 'Insufficient permissions', Map<String, dynamic>? details]) : super(403, message, details);
+  const ForbiddenException([
+    String message = 'Insufficient permissions',
+    Map<String, dynamic>? details,
+  ]) : super(403, message, details);
 }
 
 class NotFoundException extends ApiException {
-  const NotFoundException([String message = 'Resource not found', Map<String, dynamic>? details]) : super(404, message, details);
+  const NotFoundException([
+    String message = 'Resource not found',
+    Map<String, dynamic>? details,
+  ]) : super(404, message, details);
 }
 
 class ValidationException extends ApiException {
@@ -38,19 +48,29 @@ class ValidationException extends ApiException {
 }
 
 class ServerException extends ApiException {
-  const ServerException([String message = 'Internal server error', Map<String, dynamic>? details]) : super(500, message, details);
+  const ServerException([
+    String message = 'Internal server error',
+    Map<String, dynamic>? details,
+  ]) : super(500, message, details);
 }
 
 class NetworkException extends ApiException {
-  const NetworkException([String message = 'Network error', Map<String, dynamic>? details]) : super(0, message, details);
+  const NetworkException([
+    String message = 'Network error',
+    Map<String, dynamic>? details,
+  ]) : super(0, message, details);
 }
 
 class TimeoutException extends ApiException {
-  const TimeoutException([String message = 'Request timeout', Map<String, dynamic>? details]) : super(408, message, details);
+  const TimeoutException([
+    String message = 'Request timeout',
+    Map<String, dynamic>? details,
+  ]) : super(408, message, details);
 }
 
 class UnknownApiException extends ApiException {
-  const UnknownApiException(String message, [Map<String, dynamic>? details]) : super(-1, message, details);
+  const UnknownApiException(String message, [Map<String, dynamic>? details])
+    : super(-1, message, details);
 }
 
 ApiException handleDioError(DioException error) {
@@ -64,8 +84,12 @@ ApiException handleDioError(DioException error) {
     case DioExceptionType.badResponse:
       final statusCode = error.response?.statusCode ?? 0;
       final data = error.response?.data;
-      final message = data is Map ? data['error']?.toString() ?? 'Unknown error' : 'Unknown error';
-      final details = data is Map<String, dynamic> ? data : (data is Map ? Map<String, dynamic>.from(data) : null);
+      final message = data is Map
+          ? data['error']?.toString() ?? 'Unknown error'
+          : 'Unknown error';
+      final details = data is Map<String, dynamic>
+          ? data
+          : (data is Map ? Map<String, dynamic>.from(data) : null);
 
       switch (statusCode) {
         case 400:
@@ -80,10 +104,17 @@ ApiException handleDioError(DioException error) {
           Map<String, List<String>>? fieldErrors;
           if (data is Map && data['errors'] is Map) {
             fieldErrors = (data['errors'] as Map).map(
-              (k, v) => MapEntry(k.toString(), (v as List).map((e) => e.toString()).toList()),
+              (k, v) => MapEntry(
+                k.toString(),
+                (v as List).map((e) => e.toString()).toList(),
+              ),
             );
           }
-          return ValidationException(message, details: details, fieldErrors: fieldErrors);
+          return ValidationException(
+            message,
+            details: details,
+            fieldErrors: fieldErrors,
+          );
         case 500:
           return ServerException(message, details);
         default:

@@ -1,26 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/production_log.dart';
-import '../models/production_stage.dart';
-import '../models/bottleneck_alert.dart';
+
 import '../core/api/api.dart';
 import '../services/cache_service.dart';
 import '../services/connectivity_service.dart';
 
-final productionApiProvider = Provider<ProductionApiService>((ref) => ProductionApiService());
-final alertApiProvider = Provider<DashboardApiService>((ref) => DashboardApiService());
-final cacheServiceProvider = Provider<CacheService>((ref) => CacheService()..init());
+final productionApiProvider = Provider<ProductionApiService>(
+  (ref) => ProductionApiService(),
+);
+final alertApiProvider = Provider<DashboardApiService>(
+  (ref) => DashboardApiService(),
+);
+final cacheServiceProvider = Provider<CacheService>(
+  (ref) => CacheService()..init(),
+);
 
-final productionStagesProvider = FutureProvider<List<ProductionStage>>((ref) async {
+final productionStagesProvider = FutureProvider<List<ProductionStage>>((
+  ref,
+) async {
   final cache = ref.read(cacheServiceProvider);
   final api = ref.read(productionApiProvider);
-  
+
   try {
     final stages = await api.getStages();
     await cache.cacheStages(stages);
     return stages;
   } catch (_) {
     // Return cached data if API fails
-    final cached = cache.getCachedStages();
+    final cached = await cache.getCachedStages();
     if (cached.isNotEmpty) return cached;
     rethrow;
   }
@@ -29,13 +35,13 @@ final productionStagesProvider = FutureProvider<List<ProductionStage>>((ref) asy
 final productionLogsProvider = FutureProvider<List<ProductionLog>>((ref) async {
   final cache = ref.read(cacheServiceProvider);
   final api = ref.read(productionApiProvider);
-  
+
   try {
     final logs = await api.getLogs();
     await cache.cacheLogs(logs);
     return logs;
   } catch (_) {
-    final cached = cache.getCachedLogs();
+    final cached = await cache.getCachedLogs();
     if (cached.isNotEmpty) return cached;
     rethrow;
   }
@@ -44,6 +50,13 @@ final productionLogsProvider = FutureProvider<List<ProductionLog>>((ref) async {
 final alertsProvider = FutureProvider<List<BottleneckAlert>>((ref) async {
   final api = ref.read(alertApiProvider);
   return api.getAlerts(resolved: false);
+});
+
+final resolvedAlertsProvider = FutureProvider<List<BottleneckAlert>>((
+  ref,
+) async {
+  final api = ref.read(alertApiProvider);
+  return api.getAlerts(resolved: true);
 });
 
 final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
@@ -65,15 +78,18 @@ class DateFilterNotifier extends Notifier<DateTime?> {
   void clear() => state = null;
 }
 
-final shiftFilterProvider = NotifierProvider<ShiftFilterNotifier, String?>(ShiftFilterNotifier.new);
-final dateFilterProvider = NotifierProvider<DateFilterNotifier, DateTime?>(DateFilterNotifier.new);
+final shiftFilterProvider = NotifierProvider<ShiftFilterNotifier, String?>(
+  ShiftFilterNotifier.new,
+);
+final dateFilterProvider = NotifierProvider<DateFilterNotifier, DateTime?>(
+  DateFilterNotifier.new,
+);
 
 final stageTotalsProvider = FutureProvider<List<StageTotal>>((ref) async {
-  final cache = ref.read(cacheServiceProvider);
   final api = ref.read(productionApiProvider);
   final shift = ref.watch(shiftFilterProvider);
   final date = ref.watch(dateFilterProvider);
-  
+
   try {
     final totals = await api.getStageTotals(shift: shift, date: date);
     return totals;
@@ -83,7 +99,7 @@ final stageTotalsProvider = FutureProvider<List<StageTotal>>((ref) async {
   }
 });
 
-final offlineQueueCountProvider = Provider<int>((ref) {
+final offlineQueueCountProvider = FutureProvider<int>((ref) {
   final cache = ref.watch(cacheServiceProvider);
   return cache.getOfflineQueueCount();
 });

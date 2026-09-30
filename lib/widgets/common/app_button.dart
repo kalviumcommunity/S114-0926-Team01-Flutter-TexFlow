@@ -16,16 +16,24 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDisabled = isLoading || onPressed == null;
+
+    final content = isLoading
+        ? const SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(strokeWidth: 2.2),
+          )
+        : Icon(icon ?? Icons.arrow_forward_rounded, size: 20);
+
     return ElevatedButton.icon(
-      onPressed: isLoading ? null : onPressed,
-      icon: isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : (icon != null ? Icon(icon, size: 18) : const SizedBox.shrink()),
-      label: Text(label),
+      onPressed: isDisabled ? null : onPressed,
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        iconAlignment: IconAlignment.end,
+      ),
+      icon: content,
+      label: Text(isLoading ? 'Please wait...' : label),
     );
   }
 }

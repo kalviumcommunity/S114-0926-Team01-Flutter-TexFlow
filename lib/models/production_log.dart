@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+
 import 'production_stage.dart';
 import 'user.dart';
 
@@ -69,8 +70,12 @@ class ProductionLog {
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
-      stage: json['stage'] != null ? ProductionStage.fromJson(json['stage'] as Map<String, dynamic>) : null,
-      user: json['user'] != null ? User.fromJson(json['user'] as Map<String, dynamic>) : null,
+      stage: json['stage'] != null
+          ? ProductionStage.fromJson(json['stage'] as Map<String, dynamic>)
+          : null,
+      user: json['user'] != null
+          ? User.fromJson(json['user'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -166,10 +171,19 @@ class StageTotal {
   });
 
   factory StageTotal.fromJson(Map<String, dynamic> json) {
+    // Prisma `groupBy` returns `_sum.quantity` and, for a single `by` field,
+    // `_count` as a scalar. Handle the grouped-map variant defensively too.
+    final rawCount = json['_count'];
+    final count = switch (rawCount) {
+      int value => value,
+      Map map when map['stageId'] is int => map['stageId'] as int,
+      _ => 0,
+    };
+
     return StageTotal(
-      stageId: json['stageId'] as String,
-      totalQuantity: (json['_sum']?['quantity'] as int?) ?? 0,
-      count: (json['_count'] as int?) ?? 0,
+      stageId: (json['stageId'] as String?) ?? '',
+      totalQuantity: (json['_sum']?['quantity'] as num?)?.toInt() ?? 0,
+      count: count,
     );
   }
 }

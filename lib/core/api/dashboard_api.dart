@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+
 import '../../core/api/api_client.dart';
 import '../../core/api/api_exceptions.dart';
 import '../../models/bottleneck_alert.dart';
@@ -18,7 +19,7 @@ class DashboardApiService {
   Future<DashboardStats> getDashboardStats() async {
     try {
       final response = await _client.dio.get('/dashboard');
-      return _client.handleResponse(response, DashboardStats.fromJson);
+      return await _client.handleResponse(response, DashboardStats.fromJson);
     } on DioException catch (e) {
       throw handleDioError(e);
     }
@@ -48,8 +49,10 @@ class DashboardApiService {
   /// Errors: 401, 403, 404 (alert not found), 500
   Future<BottleneckAlert> resolveAlert(String alertId) async {
     try {
-      final response = await _client.dio.patch('/dashboard/alerts/$alertId/resolve');
-      return _client.handleResponse(response, BottleneckAlert.fromJson);
+      final response = await _client.dio.patch(
+        '/dashboard/alerts/$alertId/resolve',
+      );
+      return await _client.handleResponse(response, BottleneckAlert.fromJson);
     } on DioException catch (e) {
       throw handleDioError(e);
     }
