@@ -1,19 +1,23 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import '../config/constants.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal() {
-    _dio.interceptors.add(InterceptorsWrapper(
-      onError: (error, handler) async {
-        if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
-          await clearToken();
-        }
-        return handler.next(error);
-      },
-    ));
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onError: (error, handler) async {
+          if (error.response?.statusCode == 401 ||
+              error.response?.statusCode == 403) {
+            await clearToken();
+          }
+          return handler.next(error);
+        },
+      ),
+    );
   }
 
   final Dio _dio = Dio(BaseOptions(baseUrl: ApiConstants.baseUrl));

@@ -32,8 +32,12 @@ class BottleneckAlert {
       resolved: json['resolved'] as bool,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
-      resolvedAt: json['resolvedAt'] != null ? DateTime.parse(json['resolvedAt'] as String) : null,
-      stage: json['stage'] != null ? ProductionStage.fromJson(json['stage'] as Map<String, dynamic>) : null,
+      resolvedAt: json['resolvedAt'] != null
+          ? DateTime.parse(json['resolvedAt'] as String)
+          : null,
+      stage: json['stage'] != null
+          ? ProductionStage.fromJson(json['stage'] as Map<String, dynamic>)
+          : null,
     );
   }
 

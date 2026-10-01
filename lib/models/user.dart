@@ -2,6 +2,10 @@ class User {
   final String id;
   final String name;
   final String email;
+
+  /// Empty string means "unknown" (e.g. the trimmed `user` relation returned
+  /// with production logs only contains `name`). Never invent a privileged
+  /// role for a record that did not carry one.
   final String role;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -16,14 +20,17 @@ class User {
   }) : createdAt = createdAt ?? DateTime.now(),
        updatedAt = updatedAt ?? DateTime.now();
 
+  /// Tolerant parser covering both shapes the API emits:
+  ///  * full auth/me + login/register user (`id`, `name`, `email`, `role`, ...)
+  ///  * the trimmed `user: { select: { name: true } }` relation on logs
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      email: json['email'] as String,
-      role: json['role'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      id: _asString(json['id']),
+      name: _asString(json['name']),
+      email: _asString(json['email']),
+      role: _asString(json['role']),
+      createdAt: _asDate(json['createdAt']),
+      updatedAt: _asDate(json['updatedAt']),
     );
   }
 
@@ -41,4 +48,12 @@ class User {
   bool get isAdmin => role == 'admin';
   bool get isManager => role == 'manager';
   bool get isSupervisor => role == 'supervisor';
+
+  static String _asString(Object? value) => value is String ? value : '';
+
+  static DateTime? _asDate(Object? value) {
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
 }

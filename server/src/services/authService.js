@@ -1,19 +1,19 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const prisma = require('../config/database');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const prisma = require("../config/database");
 
 const generateToken = (user) => {
   return jwt.sign(
     { id: user.id, email: user.email, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN }
+    { expiresIn: process.env.JWT_EXPIRES_IN },
   );
 };
 
-const register = async (name, email, password, role = 'supervisor') => {
+const register = async (name, email, password, role = "supervisor") => {
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
-    throw new Error('Email already registered');
+    throw new Error("Email already registered");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -29,12 +29,16 @@ const register = async (name, email, password, role = 'supervisor') => {
 const login = async (email, password) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    throw new Error('Invalid credentials');
+    const error = new Error("Invalid email or password");
+    error.name = "UnauthorizedError";
+    throw error;
   }
 
   const isValidPassword = await bcrypt.compare(password, user.password);
   if (!isValidPassword) {
-    throw new Error('Invalid credentials');
+    const error = new Error("Invalid email or password");
+    error.name = "UnauthorizedError";
+    throw error;
   }
 
   const token = generateToken(user);
@@ -42,4 +46,19 @@ const login = async (email, password) => {
   return { user: userWithoutPassword, token };
 };
 
-module.exports = { register, login };
+// Resolves the authenticated user from the database so the client never has to
+// rely on JWT claims (the token intentionally only carries id/email/role).
+const getCurrentUser = async (userId) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    const error = new Error("Invalid or expired token");
+    error.name = "UnauthorizedError";
+    throw error;
+  }
+
+  const { password: _, ...userWithoutPassword } = user;
+  return userWithoutPassword;
+};
+
+module.exports = { register, login, getCurrentUser };
+

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../models/production_log.dart';
 
 class StageCard extends StatelessWidget {
@@ -10,7 +11,7 @@ class StageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        title: Text(log.stageName ?? 'Unknown Stage'),
+        title: Text(log.stageName),
         subtitle: Text('${log.quantity} ${log.unit} - ${log.shift}'),
         trailing: Text(
           '${log.logTime.hour}:${log.logTime.minute.toString().padLeft(2, '0')}',

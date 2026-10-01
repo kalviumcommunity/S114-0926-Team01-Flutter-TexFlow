@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/api/api.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/production_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_card.dart';
+import '../../widgets/common/app_scaffold.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
   const AdminScreen({super.key});
@@ -14,7 +16,8 @@ class AdminScreen extends ConsumerStatefulWidget {
   ConsumerState<AdminScreen> createState() => _AdminScreenState();
 }
 
-class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProviderStateMixin {
+class _AdminScreenState extends ConsumerState<AdminScreen>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
   @override
@@ -40,20 +43,22 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.lock_outline, size: 64, color: colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.lock_outline,
+                size: 64,
+                color: colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(height: 16),
               Text(
                 'Access Denied',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(context).textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
                 'Admin access required',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -66,68 +71,70 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
       );
     }
 
-    return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text('Admin Panel'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.people), text: 'Users'),
-            Tab(icon: Icon(Icons.factory), text: 'Stages'),
-            Tab(icon: Icon(Icons.tune), text: 'Alert Config'),
-          ],
-        ),
-        actions: [
-          PopupMenuButton<String>(
-            icon: CircleAvatar(
-              radius: 16,
-              backgroundColor: colorScheme.primaryContainer,
-              child: Text(
-                authState.user!.name.isNotEmpty ? authState.user!.name[0].toUpperCase() : 'U',
-                style: TextStyle(
-                  color: colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
+    return AppScaffold(
+      title: 'Admin Panel',
+      subtitle: 'Users, stages and alert configuration',
+      scrollable: false,
+      contentPadding: EdgeInsets.zero,
+      actions: [
+        PopupMenuButton<String>(
+          icon: CircleAvatar(
+            radius: 16,
+            backgroundColor: colorScheme.primaryContainer,
+            child: Text(
+              authState.user!.name.isNotEmpty
+                  ? authState.user!.name[0].toUpperCase()
+                  : 'U',
+              style: TextStyle(
+                color: colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
               ),
             ),
-            onSelected: (value) {
-              if (value == 'logout') {
-                ref.read(authProvider.notifier).logout();
-                context.go('/login');
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, size: 20, color: colorScheme.onSurface),
-                    const SizedBox(width: 8),
-                    const Text('Logout'),
-                  ],
-                ),
-              ),
-            ],
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildUsersTab(context, ref),
-            _buildStagesTab(context, ref),
-            _buildAlertConfigTab(context, ref),
+          onSelected: (value) {
+            if (value == 'logout') {
+              ref.read(authProvider.notifier).logout();
+              context.go('/login');
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'logout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout, size: 20, color: colorScheme.onSurface),
+                  const SizedBox(width: 8),
+                  const Text('Logout'),
+                ],
+              ),
+            ),
           ],
         ),
+      ],
+      body: Column(
+        children: [
+          TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: const [
+              Tab(icon: Icon(Icons.people), text: 'Users'),
+              Tab(icon: Icon(Icons.factory), text: 'Stages'),
+              Tab(icon: Icon(Icons.tune), text: 'Alert Config'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildUsersTab(context, ref),
+                _buildStagesTab(context, ref),
+                _buildAlertConfigTab(context, ref),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -143,9 +150,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
             children: [
               Text(
                 'User Management',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(context).textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               AppButton(
                 label: 'Add User',
@@ -158,8 +164,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
           Text(
             'Register new users. Note: User listing requires backend endpoint.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 24),
           AppCard(
@@ -184,8 +190,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
     String selectedRole = 'supervisor';
     bool isLoading = false;
 
-    return Consumer(
-      builder: (context, ref, child) {
+    return StatefulBuilder(
+      builder: (context, setState) {
         return Form(
           key: formKey,
           child: Column(
@@ -201,7 +207,9 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                   if (value == null || value.isEmpty) {
                     return 'Please enter name';
                   }
-                  if (value.length < 2) return 'Name must be at least 2 characters';
+                  if (value.length < 2) {
+                    return 'Name must be at least 2 characters';
+                  }
                   return null;
                 },
               ),
@@ -215,28 +223,33 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                 ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter email';
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter email';
+                  }
                   if (!value.contains('@')) return 'Invalid email';
                   return null;
                 },
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: selectedRole,
+                initialValue: selectedRole,
                 decoration: const InputDecoration(
                   labelText: 'Role',
                   prefixIcon: Icon(Icons.badge_outlined),
                   border: OutlineInputBorder(),
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
+                  DropdownMenuItem(
+                    value: 'supervisor',
+                    child: Text('Supervisor'),
+                  ),
                   DropdownMenuItem(value: 'manager', child: Text('Manager')),
                   DropdownMenuItem(value: 'admin', child: Text('Admin')),
                 ],
                 onChanged: (value) {
                   if (value != null) {
                     selectedRole = value;
-                    (context as Element).markNeedsBuild();
+                    setState(() {});
                   }
                 },
               ),
@@ -250,8 +263,12 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                 ),
                 obscureText: true,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter password';
-                  if (value.length < 6) return 'Password must be at least 6 characters';
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter password';
+                  }
+                  if (value.length < 6) {
+                    return 'Password must be at least 6 characters';
+                  }
                   return null;
                 },
               ),
@@ -261,40 +278,50 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                 child: AppButton(
                   label: 'Register User',
                   icon: Icons.person_add,
-                  onPressed: isLoading ? null : () async {
-                    if (!formKey.currentState!.validate()) return;
-                    isLoading = true;
-                    (context as Element).markNeedsBuild();
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          isLoading = true;
+                          setState(() {});
 
-                    try {
-                      final authApi = ref.read(authApiProvider);
-                      await authApi.register(RegisterRequest(
-                        name: nameController.text.trim(),
-                        email: emailController.text.trim(),
-                        password: passwordController.text,
-                        role: selectedRole,
-                      ));
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('User registered successfully'), backgroundColor: Colors.green),
-                        );
-                        nameController.clear();
-                        emailController.clear();
-                        passwordController.clear();
-                        selectedRole = 'supervisor';
-                        (context as Element).markNeedsBuild();
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Registration failed: $e'), backgroundColor: Colors.red),
-                        );
-                      }
-                    } finally {
-                      isLoading = false;
-                      if (context.mounted) (context as Element).markNeedsBuild();
-                    }
-                  },
+                          try {
+                            final authApi = ref.read(authApiProvider);
+                            await authApi.register(
+                              RegisterRequest(
+                                name: nameController.text.trim(),
+                                email: emailController.text.trim(),
+                                password: passwordController.text,
+                                role: selectedRole,
+                              ),
+                            );
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('User registered successfully'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              nameController.clear();
+                              emailController.clear();
+                              passwordController.clear();
+                              selectedRole = 'supervisor';
+                              setState(() {});
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Registration failed: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          } finally {
+                            isLoading = false;
+                            if (context.mounted) setState(() {});
+                          }
+                        },
                   isLoading: isLoading,
                 ),
               ),
@@ -316,10 +343,16 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
             backgroundColor: Theme.of(context).colorScheme.primaryContainer,
             child: Text(
               user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'U',
-              style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          title: Text(user?.name ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w600)),
+          title: Text(
+            user?.name ?? 'Unknown',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
           subtitle: Text(user?.email ?? ''),
           trailing: Chip(
             label: Text(user?.role ?? 'supervisor'),
@@ -328,7 +361,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
         ),
         const Divider(),
         ListTile(
-          leading: Icon(Icons.badge_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          leading: Icon(
+            Icons.badge_outlined,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           title: const Text('Current Role'),
           trailing: Text(
             user?.role ?? 'supervisor',
@@ -375,9 +411,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
             children: [
               Text(
                 'Production Stages',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(context).textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               AppButton(
                 label: 'Add Stage',
@@ -389,14 +424,17 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
           const SizedBox(height: 16),
           Text(
             'Manage production stages. Note: Update/Delete requires backend endpoints.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
           stagesAsync.when(
             data: (stages) => stages.isEmpty
-                ? _buildEmptyState(context, 'No stages found', 'Add your first production stage')
+                ? _buildEmptyState(
+                    context,
+                    'No stages found',
+                    'Add your first production stage',
+                  )
                 : ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -408,14 +446,30 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                         child: ListTile(
                           leading: CircleAvatar(
                             backgroundColor: colorScheme.primaryContainer,
-                            child: Text('${stage.order}', style: TextStyle(color: colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold)),
+                            child: Text(
+                              '${stage.order}',
+                              style: TextStyle(
+                                color: colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                          title: Text(stage.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          title: Text(
+                            stage.name,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (stage.description != null) Text(stage.description!),
-                              Text('Order: ${stage.order}', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12)),
+                              if (stage.description != null)
+                                Text(stage.description!),
+                              Text(
+                                'Order: ${stage.order}',
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ],
                           ),
                           trailing: Row(
@@ -423,27 +477,35 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.edit, size: 20),
-                                onPressed: () => _showEditStageDialog(context, ref, stage),
+                                onPressed: () =>
+                                    _showEditStageDialog(context, ref, stage),
                                 tooltip: 'Edit (requires backend PUT)',
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                                onPressed: () => _showDeleteStageConfirm(context, ref, stage),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  size: 20,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () => _showDeleteStageConfirm(
+                                  context,
+                                  ref,
+                                  stage,
+                                ),
                                 tooltip: 'Delete (requires backend DELETE)',
                               ),
                             ],
                           ),
-                        );
+                        ),
+                      );
                     },
                   ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, _) => _buildErrorState(context, 'Failed to load stages: $err'),
+            error: (err, _) =>
+                _buildErrorState(context, 'Failed to load stages: $err'),
           ),
           const SizedBox(height: 24),
-          AppCard(
-            title: 'Add New Stage',
-            child: _buildStageForm(context, ref),
-          ),
+          AppCard(title: 'Add New Stage', child: _buildStageForm(context, ref)),
         ],
       ),
     );
@@ -456,8 +518,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
     final orderController = TextEditingController(text: '1');
     bool isLoading = false;
 
-    return Consumer(
-      builder: (context, ref, child) {
+    return StatefulBuilder(
+      builder: (context, setState) {
         return Form(
           key: formKey,
           child: Column(
@@ -470,8 +532,12 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter stage name';
-                  if (value.length < 2) return 'Name must be at least 2 characters';
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter stage name';
+                  }
+                  if (value.length < 2) {
+                    return 'Name must be at least 2 characters';
+                  }
                   return null;
                 },
               ),
@@ -495,9 +561,13 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter order';
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter order';
+                  }
                   final order = int.tryParse(value);
-                  if (order == null || order < 1) return 'Order must be a positive integer';
+                  if (order == null || order < 1) {
+                    return 'Order must be a positive integer';
+                  }
                   return null;
                 },
               ),
@@ -507,22 +577,26 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                 child: AppButton(
                   label: 'Add Stage',
                   icon: Icons.add,
-                  onPressed: isLoading ? null : () async {
-                    if (!formKey.currentState!.validate()) return;
-                    isLoading = true;
-                    (context as Element).markNeedsBuild();
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          isLoading = true;
+                          setState(() {});
 
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Stage creation requires backend POST /api/production/stages endpoint'),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
-                    }
-                    isLoading = false;
-                    if (context.mounted) (context as Element).markNeedsBuild();
-                  },
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Stage creation requires backend POST /api/production/stages endpoint',
+                                ),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
+                          isLoading = false;
+                          if (context.mounted) setState(() {});
+                        },
                   isLoading: isLoading,
                 ),
               ),
@@ -552,10 +626,16 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
     );
   }
 
-  void _showEditStageDialog(BuildContext context, WidgetRef ref, ProductionStage stage) {
+  void _showEditStageDialog(
+    BuildContext context,
+    WidgetRef ref,
+    ProductionStage stage,
+  ) {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: stage.name);
-    final descriptionController = TextEditingController(text: stage.description ?? '');
+    final descriptionController = TextEditingController(
+      text: stage.description ?? '',
+    );
     final orderController = TextEditingController(text: stage.order.toString());
     bool isLoading = false;
 
@@ -579,7 +659,9 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Please enter stage name';
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter stage name';
+                      }
                       return null;
                     },
                   ),
@@ -603,9 +685,13 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                     ),
                     keyboardType: TextInputType.number,
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Please enter order';
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter order';
+                      }
                       final order = int.tryParse(value);
-                      if (order == null || order < 1) return 'Order must be a positive integer';
+                      if (order == null || order < 1) {
+                        return 'Order must be a positive integer';
+                      }
                       return null;
                     },
                   ),
@@ -615,22 +701,26 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                     child: AppButton(
                       label: 'Save Changes',
                       icon: Icons.save,
-                      onPressed: isLoading ? null : () async {
-                        if (!formKey.currentState!.validate()) return;
-                        isLoading = true;
-                        (dialogContext as Element).markNeedsBuild();
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+                              isLoading = true;
+                              (dialogContext as Element).markNeedsBuild();
 
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Stage update requires backend PUT /api/production/stages/:id endpoint'),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
-                          Navigator.pop(dialogContext);
-                        }
-                        isLoading = false;
-                      },
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Stage update requires backend PUT /api/production/stages/:id endpoint',
+                                    ),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                                Navigator.pop(dialogContext);
+                              }
+                              isLoading = false;
+                            },
                       isLoading: isLoading,
                     ),
                   ),
@@ -649,12 +739,18 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
     );
   }
 
-  void _showDeleteStageConfirm(BuildContext context, WidgetRef ref, ProductionStage stage) {
+  void _showDeleteStageConfirm(
+    BuildContext context,
+    WidgetRef ref,
+    ProductionStage stage,
+  ) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Stage'),
-        content: Text('Are you sure you want to delete "${stage.name}"? This action cannot be undone.'),
+        content: Text(
+          'Are you sure you want to delete "${stage.name}"? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -665,7 +761,9 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
               Navigator.pop(dialogContext);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Stage deletion requires backend DELETE /api/production/stages/:id endpoint'),
+                  content: Text(
+                    'Stage deletion requires backend DELETE /api/production/stages/:id endpoint',
+                  ),
                   backgroundColor: Colors.orange,
                 ),
               );
@@ -688,16 +786,14 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
         children: [
           Text(
             'Alert Threshold Configuration',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(context).textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'Configure bottleneck detection thresholds. Note: Changes require backend endpoint.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
           AppCard(
@@ -768,7 +864,12 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                     icon: Icons.bug_report,
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Test alert sent (backend endpoint needed)'), backgroundColor: Colors.blue),
+                        const SnackBar(
+                          content: Text(
+                            'Test alert sent (backend endpoint needed)',
+                          ),
+                          backgroundColor: Colors.blue,
+                        ),
                       );
                     },
                   ),
@@ -781,7 +882,12 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                     icon: Icons.save,
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Configuration saved (backend endpoint needed)'), backgroundColor: Colors.green),
+                        const SnackBar(
+                          content: Text(
+                            'Configuration saved (backend endpoint needed)',
+                          ),
+                          backgroundColor: Colors.green,
+                        ),
                       );
                     },
                   ),
@@ -794,7 +900,13 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildThresholdItem(BuildContext context, String title, String description, double value, Color color) {
+  Widget _buildThresholdItem(
+    BuildContext context,
+    String title,
+    String description,
+    double value,
+    Color color,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -822,8 +934,20 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                Text(description, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  description,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
               ],
             ),
           ),
@@ -832,7 +956,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
             label: const Text('Edit'),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Threshold editing requires backend endpoint'), backgroundColor: Colors.orange),
+                const SnackBar(
+                  content: Text('Threshold editing requires backend endpoint'),
+                  backgroundColor: Colors.orange,
+                ),
               );
             },
           ),
@@ -859,15 +986,21 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
               ],
             ),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-          ),
+          Switch(value: value, onChanged: onChanged),
         ],
       ),
     );
@@ -880,11 +1013,22 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
         padding: const EdgeInsets.all(32),
         child: Column(
           children: [
-            Icon(Icons.inbox_outlined, size: 64, color: colorScheme.onSurfaceVariant),
+            Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(height: 16),
-            Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
-            Text(subtitle, style: TextStyle(color: colorScheme.onSurfaceVariant)),
+            Text(
+              subtitle,
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
           ],
         ),
       ),

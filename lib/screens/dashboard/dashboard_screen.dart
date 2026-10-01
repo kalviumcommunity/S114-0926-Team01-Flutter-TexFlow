@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+
 import '../../models/production_log.dart';
 import '../../models/production_stage.dart';
 import '../../models/dashboard.dart';
@@ -9,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/production_provider.dart';
 import '../../widgets/charts/production_chart.dart';
 import '../../widgets/common/app_card.dart';
+import '../../widgets/common/app_scaffold.dart';
 import '../../utils/helpers.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -21,265 +23,260 @@ class DashboardScreen extends ConsumerWidget {
     final stagesAsync = ref.watch(productionStagesProvider);
     final dashboardStatsAsync = ref.watch(dashboardStatsProvider);
     final stageTotalsAsync = ref.watch(stageTotalsProvider);
-    final shiftFilter = ref.watch(shiftFilterProvider);
-    final dateFilter = ref.watch(dateFilterProvider);
-    final isOnline = ref.watch(connectivityProvider).maybeWhen(
-      data: (value) => value,
-      orElse: () => true,
-    );
+    final isOnline = ref
+        .watch(connectivityProvider)
+        .maybeWhen(data: (value) => value, orElse: () => true);
     final offlineQueueCount = ref.watch(offlineQueueCountProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     final isManagerOrAdmin = authState.isManager || authState.isAdmin;
     final isSupervisor = authState.isSupervisor;
 
-    return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text('TexFlow'),
-        actions: [
-          if (!isOnline)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Tooltip(
-                message: 'Offline - $offlineQueueCount pending sync',
-                child: const Icon(Icons.cloud_off, color: Colors.orange),
-              ),
+    return AppScaffold(
+      title: 'TexFlow',
+      subtitle: 'Production overview',
+      contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      onRefresh: () async {
+        ref.invalidate(productionLogsProvider);
+        ref.invalidate(productionStagesProvider);
+        ref.invalidate(alertsProvider);
+        ref.invalidate(dashboardStatsProvider);
+        ref.invalidate(stageTotalsProvider);
+      },
+      actions: [
+        if (!isOnline)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Tooltip(
+              message: 'Offline - $offlineQueueCount pending sync',
+              child: const Icon(Icons.cloud_off, color: Colors.orange),
             ),
-          if (authState.user == null)
-            TextButton.icon(
-              onPressed: () => context.go('/login'),
-              icon: const Icon(Icons.login_rounded),
-              label: const Text('Login'),
-            )
-          else
-            PopupMenuButton<String>(
-              icon: CircleAvatar(
-                radius: 16,
-                backgroundColor: colorScheme.primaryContainer,
-                child: Text(
-                  authState.user!.name.isNotEmpty ? authState.user!.name[0].toUpperCase() : 'U',
-                  style: TextStyle(
-                    color: colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
+          ),
+        if (authState.user == null)
+          TextButton.icon(
+            onPressed: () => context.go('/login'),
+            icon: const Icon(Icons.login_rounded),
+            label: const Text('Login'),
+          )
+        else
+          PopupMenuButton<String>(
+            icon: CircleAvatar(
+              radius: 16,
+              backgroundColor: colorScheme.primaryContainer,
+              child: Text(
+                authState.user!.name.isNotEmpty
+                    ? authState.user!.name[0].toUpperCase()
+                    : 'U',
+                style: TextStyle(
+                  color: colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
                 ),
               ),
-              onSelected: (value) {
-                if (value == 'logout') {
-                  ref.read(authProvider.notifier).logout();
-                  context.go('/login');
-                }
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, size: 20, color: colorScheme.onSurface),
-                      const SizedBox(width: 8),
-                      const Text('Logout'),
-                    ],
-                  ),
+            ),
+            onSelected: (value) {
+              if (value == 'logout') {
+                ref.read(authProvider.notifier).logout();
+                context.go('/login');
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, size: 20, color: colorScheme.onSurface),
+                    const SizedBox(width: 8),
+                    const Text('Logout'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [colorScheme.primary, colorScheme.secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.primary.withValues(alpha: 0.25),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
                 ),
               ],
             ),
-        ],
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(productionLogsProvider);
-            ref.invalidate(productionStagesProvider);
-            ref.invalidate(alertsProvider);
-            ref.invalidate(dashboardStatsProvider);
-          },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [colorScheme.primary, colorScheme.secondary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                    color: Colors.white.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    'Production intelligence',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
                     ),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorScheme.primary.withValues(alpha: 0.25),
-                        blurRadius: 24,
-                        offset: const Offset(0, 12),
-                      ),
-                    ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Smart textile production',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  authState.user != null
+                      ? 'Welcome, ${authState.user!.name} (${authState.user!.role})'
+                      : 'Track every stage of your production line',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    if (isSupervisor || isManagerOrAdmin)
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: colorScheme.primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 14,
+                          ),
+                        ),
+                        onPressed: () => context.go('/production/log'),
+                        icon: const Icon(Icons.add_circle_outline_rounded),
+                        label: const Text('Log Production'),
+                      ),
+                    if (isManagerOrAdmin)
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: colorScheme.primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 14,
+                          ),
+                        ),
+                        onPressed: () => context.go('/dashboard/alerts'),
+                        icon: const Icon(Icons.warning_amber_rounded),
+                        label: const Text('View Alerts'),
+                      ),
+                    if (authState.isAdmin)
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: colorScheme.primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 14,
+                          ),
+                        ),
+                        onPressed: () => context.go('/admin'),
+                        icon: const Icon(Icons.admin_panel_settings_rounded),
+                        label: const Text('Admin Panel'),
+                      ),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white30),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Text(
-                          'Production intelligence',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.8,
-                          ),
+                          horizontal: 18,
+                          vertical: 14,
                         ),
                       ),
-                      const SizedBox(height: 18),
-                      Text(
-                        'Smart textile production',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              height: 1.1,
-                            ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        authState.user != null
-                            ? 'Welcome, ${authState.user!.name} (${authState.user!.role})'
-                            : 'Track every stage of your production line',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          if (isSupervisor || isManagerOrAdmin)
-                            FilledButton.icon(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: colorScheme.primary,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 14,
-                                ),
-                              ),
-                              onPressed: () => context.go('/production/log'),
-                              icon: const Icon(Icons.add_circle_outline_rounded),
-                              label: const Text('Log Production'),
-                            ),
-                          if (isManagerOrAdmin)
-                            FilledButton.icon(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: colorScheme.primary,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 14,
-                                ),
-                              ),
-                              onPressed: () => context.go('/dashboard/alerts'),
-                              icon: const Icon(Icons.warning_amber_rounded),
-                              label: const Text('View Alerts'),
-                            ),
-                          if (authState.isAdmin)
-                            FilledButton.icon(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: colorScheme.primary,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 14,
-                                ),
-                              ),
-                              onPressed: () => context.go('/admin'),
-                              icon: const Icon(Icons.admin_panel_settings_rounded),
-                              label: const Text('Admin Panel'),
-                            ),
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white30),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 14,
-                              ),
-                            ),
-                            onPressed: () {
-                              ref.invalidate(productionLogsProvider);
-                              ref.invalidate(productionStagesProvider);
-                              ref.invalidate(alertsProvider);
-                              ref.invalidate(dashboardStatsProvider);
-                              ref.invalidate(stageTotalsProvider);
-                            },
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Refresh Data'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _buildFilterControls(context, ref, colorScheme),
-                const SizedBox(height: 24),
-                dashboardStatsAsync.when(
-                  data: (stats) => _buildStatsGrid(context, stats),
-                  loading: () => _buildStatsGrid(context, null, isLoading: true),
-                  error: (err, _) => _buildStatsGrid(context, null, error: err.toString()),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Production by Stage (Today)',
-                  style: Theme.of(context).textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 14),
-                stageTotalsAsync.when(
-                  data: (totals) => stagesAsync.when(
-                    data: (stages) => _buildStageTotalsChartCard(context, stages, totals),
-                    loading: () => _buildChartPlaceholder(),
-                    error: (err, _) => _buildErrorCard(err.toString()),
-                  ),
-                  loading: () => _buildChartPlaceholder(),
-                  error: (err, _) => _buildErrorCard(err.toString()),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Recent Production Logs',
-                  style: Theme.of(context).textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 14),
-                logsAsync.when(
-                  data: (logs) => _buildRecentLogs(context, logs),
-                  loading: () => _buildLoadingCard(),
-                  error: (err, _) => _buildErrorCard(err.toString()),
+                      onPressed: () {
+                        ref.invalidate(productionLogsProvider);
+                        ref.invalidate(productionStagesProvider);
+                        ref.invalidate(alertsProvider);
+                        ref.invalidate(dashboardStatsProvider);
+                        ref.invalidate(stageTotalsProvider);
+                      },
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Refresh Data'),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-        ),
+          const SizedBox(height: 24),
+          _buildFilterControls(context, ref, colorScheme),
+          const SizedBox(height: 24),
+          dashboardStatsAsync.when(
+            data: (stats) => _buildStatsGrid(context, stats),
+            loading: () => _buildStatsGrid(context, null, isLoading: true),
+            error: (err, _) =>
+                _buildStatsGrid(context, null, error: err.toString()),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Production by Stage (Today)',
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 14),
+          stageTotalsAsync.when(
+            data: (totals) => stagesAsync.when(
+              data: (stages) =>
+                  _buildStageTotalsChartCard(context, stages, totals),
+              loading: () => _buildChartPlaceholder(),
+              error: (err, _) => _buildErrorCard(err.toString()),
+            ),
+            loading: () => _buildChartPlaceholder(),
+            error: (err, _) => _buildErrorCard(err.toString()),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Recent Production Logs',
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 14),
+          logsAsync.when(
+            data: (logs) => _buildRecentLogs(context, logs),
+            loading: () => _buildLoadingCard(),
+            error: (err, _) => _buildErrorCard(err.toString()),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatsGrid(BuildContext context, DashboardStats? stats,
-      {bool isLoading = false, String? error}) {
+  Widget _buildStatsGrid(
+    BuildContext context,
+    DashboardStats? stats, {
+    bool isLoading = false,
+    String? error,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
 
     final totalQuantity = stats?.totalQuantity ?? 0;
@@ -288,10 +285,26 @@ class DashboardScreen extends ConsumerWidget {
     final avgPerEntry = totalEntries > 0 ? totalQuantity ~/ totalEntries : 0;
 
     final statItems = [
-      {'label': 'Total Quantity', 'value': formatQuantity(totalQuantity), 'icon': Icons.inventory_2_rounded},
-      {'label': 'Entries Today', 'value': totalEntries.toString(), 'icon': Icons.note_alt_rounded},
-      {'label': 'Active Alerts', 'value': activeAlerts.toString(), 'icon': Icons.warning_amber_rounded},
-      {'label': 'Avg/Entry', 'value': formatQuantity(avgPerEntry), 'icon': Icons.trending_up_rounded},
+      {
+        'label': 'Total Quantity',
+        'value': formatQuantity(totalQuantity),
+        'icon': Icons.inventory_2_rounded,
+      },
+      {
+        'label': 'Entries Today',
+        'value': totalEntries.toString(),
+        'icon': Icons.note_alt_rounded,
+      },
+      {
+        'label': 'Active Alerts',
+        'value': activeAlerts.toString(),
+        'icon': Icons.warning_amber_rounded,
+      },
+      {
+        'label': 'Avg/Entry',
+        'value': formatQuantity(avgPerEntry),
+        'icon': Icons.trending_up_rounded,
+      },
     ];
 
     return GridView.builder(
@@ -328,10 +341,7 @@ class DashboardScreen extends ConsumerWidget {
                     color: colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    icon,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
+                  child: Icon(icon, color: colorScheme.onPrimaryContainer),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -342,53 +352,14 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                  style: Theme.of(context).textTheme.bodyMedium
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
                 ),
               ],
             ],
           ),
         );
       },
-    );
-  }
-
-  Widget _buildStageChartCard(BuildContext context, List<ProductionStage> stages, List<ProductionLog> logs) {
-    final today = DateTime.now();
-    final todayStart = DateTime(today.year, today.month, today.day);
-    final todayLogs = logs.where((log) => log.logTime.isAfter(todayStart)).toList();
-
-    final stageData = <String, int>{};
-    for (final stage in stages) {
-      final stageLogs = todayLogs.where((log) => log.stageId == stage.id).toList();
-      final total = stageLogs.fold(0, (sum, log) => sum + log.quantity);
-      stageData[stage.name] = total;
-    }
-
-    final sortedStages = stages.where((s) => stageData[s.name]! > 0).toList()
-      ..sort((a, b) => (stageData[b.name] ?? 0).compareTo(stageData[a.name] ?? 0));
-
-    final data = sortedStages.map((s) => (stageData[s.name] ?? 0).toDouble()).toList();
-    final labels = sortedStages.map((s) => s.name).toList();
-
-    return AppCard(
-      title: 'Today\'s Production by Stage',
-      child: data.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Column(
-                  children: [
-                    Icon(Icons.bar_chart, size: 48, color: Colors.grey),
-                    SizedBox(height: 16),
-                    Text('No production data for today'),
-                    Text('Log some production to see the chart', style: TextStyle(color: Colors.grey)),
-                  ],
-                ),
-              ),
-            )
-          : ProductionChart(data: data, labels: labels),
     );
   }
 
@@ -404,7 +375,10 @@ class DashboardScreen extends ConsumerWidget {
                 Icon(Icons.history, size: 48, color: Colors.grey),
                 SizedBox(height: 16),
                 Text('No production logs yet'),
-                Text('Start logging to see history', style: TextStyle(color: Colors.grey)),
+                Text(
+                  'Start logging to see history',
+                  style: TextStyle(color: Colors.grey),
+                ),
               ],
             ),
           ),
@@ -430,13 +404,15 @@ class DashboardScreen extends ConsumerWidget {
                 size: 20,
               ),
             ),
-            title: Text(log.stageName ?? 'Unknown Stage'),
-            subtitle: Text('${log.quantity} ${log.unit} • ${getShiftLabel(log.shift)} • $date'),
+            title: Text(log.stageName),
+            subtitle: Text(
+              '${log.quantity} ${log.unit} • ${getShiftLabel(log.shift)} • $date',
+            ),
             trailing: Text(
               time,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           );
         }).toList(),
@@ -445,16 +421,20 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildChartPlaceholder() => AppCard(
-        title: 'Today\'s Production by Stage',
-        child: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(32),
-            child: CircularProgressIndicator(),
-          ),
-        ),
-      );
+    title: 'Today\'s Production by Stage',
+    child: const Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: CircularProgressIndicator(),
+      ),
+    ),
+  );
 
-  Widget _buildFilterControls(BuildContext context, WidgetRef ref, ColorScheme colorScheme) {
+  Widget _buildFilterControls(
+    BuildContext context,
+    WidgetRef ref,
+    ColorScheme colorScheme,
+  ) {
     final shiftFilter = ref.watch(shiftFilterProvider);
     final dateFilter = ref.watch(dateFilterProvider);
 
@@ -466,7 +446,10 @@ class DashboardScreen extends ConsumerWidget {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: shiftFilter,
+                  initialValue: shiftFilter,
+                  // Without this the long shift labels overflow the field on
+                  // narrow layouts.
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Shift',
                     prefixIcon: Icon(Icons.access_time_outlined),
@@ -475,11 +458,21 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   items: const [
                     DropdownMenuItem(value: null, child: Text('All Shifts')),
-                    DropdownMenuItem(value: 'morning', child: Text('Morning (6AM-2PM)')),
-                    DropdownMenuItem(value: 'afternoon', child: Text('Afternoon (2PM-10PM)')),
-                    DropdownMenuItem(value: 'night', child: Text('Night (10PM-6AM)')),
+                    DropdownMenuItem(
+                      value: 'morning',
+                      child: Text('Morning (6AM-2PM)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'afternoon',
+                      child: Text('Afternoon (2PM-10PM)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'night',
+                      child: Text('Night (10PM-6AM)'),
+                    ),
                   ],
-                  onChanged: (value) => ref.read(shiftFilterProvider.notifier).setShift(value),
+                  onChanged: (value) =>
+                      ref.read(shiftFilterProvider.notifier).setShift(value),
                 ),
               ),
               const SizedBox(width: 16),
@@ -508,7 +501,9 @@ class DashboardScreen extends ConsumerWidget {
                           ? DateFormat('MMM d, yyyy').format(dateFilter)
                           : 'Select Date',
                       style: TextStyle(
-                        color: dateFilter != null ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+                        color: dateFilter != null
+                            ? colorScheme.onSurface
+                            : colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -530,21 +525,29 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
           ],
-          ],
-        ),
-      );
+        ],
+      ),
+    );
   }
 
-  Widget _buildStageTotalsChartCard(BuildContext context, List<ProductionStage> stages, List<StageTotal> totals) {
+  Widget _buildStageTotalsChartCard(
+    BuildContext context,
+    List<ProductionStage> stages,
+    List<StageTotal> totals,
+  ) {
     final stageData = <String, int>{};
     for (final total in totals) {
       stageData[total.stageId] = total.totalQuantity;
     }
 
-    final sortedStages = stages.where((s) => (stageData[s.id] ?? 0) > 0).toList()
-      ..sort((a, b) => (stageData[b.id] ?? 0).compareTo(stageData[a.id] ?? 0));
+    final sortedStages =
+        stages.where((s) => (stageData[s.id] ?? 0) > 0).toList()..sort(
+          (a, b) => (stageData[b.id] ?? 0).compareTo(stageData[a.id] ?? 0),
+        );
 
-    final data = sortedStages.map((s) => (stageData[s.id] ?? 0).toDouble()).toList();
+    final data = sortedStages
+        .map((s) => (stageData[s.id] ?? 0).toDouble())
+        .toList();
     final labels = sortedStages.map((s) => s.name).toList();
 
     return AppCard(
@@ -558,7 +561,10 @@ class DashboardScreen extends ConsumerWidget {
                     Icon(Icons.bar_chart, size: 48, color: Colors.grey),
                     SizedBox(height: 16),
                     Text('No production data for selected filters'),
-                    Text('Log some production to see the chart', style: TextStyle(color: Colors.grey)),
+                    Text(
+                      'Log some production to see the chart',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ],
                 ),
               ),
@@ -568,31 +574,33 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildLoadingCard() => AppCard(
-        title: 'Recent Logs',
-        child: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(32),
-            child: CircularProgressIndicator(),
-          ),
-        ),
-      );
+    title: 'Recent Logs',
+    child: const Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: CircularProgressIndicator(),
+      ),
+    ),
+  );
 
   Widget _buildErrorCard(String error) => AppCard(
-        title: 'Error',
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                const SizedBox(height: 16),
-                Text('Failed to load data: $error'),
-                const SizedBox(height: 8),
-                const Text('Check if the server is running on localhost:5000',
-                    style: TextStyle(color: Colors.grey)),
-              ],
+    title: 'Error',
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('Failed to load data: $error'),
+            const SizedBox(height: 8),
+            const Text(
+              'Check if the server is running on localhost:5000',
+              style: TextStyle(color: Colors.grey),
             ),
-          ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }

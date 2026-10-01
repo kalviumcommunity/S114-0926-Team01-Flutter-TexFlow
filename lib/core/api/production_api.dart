@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+
 import '../../core/api/api_client.dart';
 import '../../core/api/api_exceptions.dart';
 import '../../models/production_log.dart';
@@ -29,7 +30,11 @@ class ProductionApiService {
   /// Query params: shift?, stageId?, date? (YYYY-MM-DD)
   /// Response: ProductionLog[]
   /// Errors: 401, 403, 500
-  Future<List<ProductionLog>> getLogs({String? shift, String? stageId, DateTime? date}) async {
+  Future<List<ProductionLog>> getLogs({
+    String? shift,
+    String? stageId,
+    DateTime? date,
+  }) async {
     try {
       final query = GetLogsQuery(shift: shift, stageId: stageId, date: date);
       final response = await _client.dio.get(
@@ -53,7 +58,7 @@ class ProductionApiService {
         '/production/logs',
         data: request.toJson(),
       );
-      return _client.handleResponse(response, ProductionLog.fromJson);
+      return await _client.handleResponse(response, ProductionLog.fromJson);
     } on DioException catch (e) {
       throw handleDioError(e);
     }
@@ -64,7 +69,10 @@ class ProductionApiService {
   /// Query params: shift?, date? (YYYY-MM-DD)
   /// Response: StageTotal[] (grouped by stageId with _sum.quantity and _count)
   /// Errors: 401, 403, 500
-  Future<List<StageTotal>> getStageTotals({String? shift, DateTime? date}) async {
+  Future<List<StageTotal>> getStageTotals({
+    String? shift,
+    DateTime? date,
+  }) async {
     try {
       final query = GetLogsQuery(shift: shift, date: date);
       final response = await _client.dio.get(
